@@ -1,0 +1,887 @@
+{
+  "name": "My workflow copy",
+  "nodes": [
+    {
+      "parameters": {
+        "sendTo": "matthew3957@gmail.com",
+        "subject": "Daily Images",
+        "emailType": "text",
+        "message": "Your images have been updated!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3120,
+        96
+      ],
+      "id": "d17b1a26-2524-45c9-8ab8-e2e709d6d71e",
+      "name": "Send a message",
+      "webhookId": "6b96d93c-e31c-42f6-ba61-ac1e82068c96",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "pPOtQjmhsQr3qzOh",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "4705d4d8-3122-4466-aeb8-9646a471c4d6",
+      "name": "Manual Test Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        432,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "default-session"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1200,
+        320
+      ],
+      "id": "a89fbfee-d231-4b1b-9397-0c328f07323e",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-3-5-haiku-20241022",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 3.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1056,
+        320
+      ],
+      "id": "f7c5375c-b3b2-425e-b498-df4e6b6bf293",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "GotkAIz1m1Qt0xnD",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fan-out: turn LLM \"output\" string into one item per query.\n// Mode: Run Once for All Items | Outputs: 1\n\nfunction stripFences(s){\n  return String(s).trim().replace(/^```(?:json)?\\s*|\\s*```$/g,'');\n}\nfunction extractJsonBlock(s){\n  const a = s.indexOf('{'), b = s.lastIndexOf('}');\n  return (a>-1 && b>-1 && b>a) ? s.slice(a,b+1) : null;\n}\n// Convert single-quoted strings to valid JSON strings and quote bare keys.\n// Also escape inner \" in those converted strings.\nfunction looseFix(s){\n  let t = s;\n  // Wrap bare object keys: foo: -> \"foo\":\n  t = t.replace(/([\\{\\s,])([A-Za-z_]\\w*)\\s*:/g, '$1\"$2\":');\n  // Convert '...'(single-quoted) to \"...\" while escaping inner \"\n  t = t.replace(/'([^'\\\\]|\\\\.)*'/g, (m) => {\n    const inner = m.slice(1, -1)           // drop outer single quotes\n      .replace(/\\\\/g, '\\\\\\\\')              // escape backslashes first\n      .replace(/\"/g, '\\\\\"');               // then escape any \"\n    return `\"${inner}\"`;\n  });\n  return t;\n}\n// Fallback: directly parse queries array by matching quoted strings\nfunction extractQueriesWithoutJSON(s){\n  const m = s.match(/\"queries\"\\s*:\\s*\\[([\\s\\S]*?)\\]/);\n  if (!m) return [];\n  const body = m[1];\n  const re = /\"([^\"\\\\]|\\\\.)*\"|'([^'\\\\]|\\\\.)*'/g;\n  const out = [];\n  let match;\n  while ((match = re.exec(body)) !== null){\n    let raw = match[0];\n    const quote = raw[0];\n    let inner = raw.slice(1,-1);\n    if (quote === '\"'){\n      inner = inner.replace(/\\\\\"/g, '\"').replace(/\\\\\\\\/g,'\\\\');\n    } else {\n      // came from single quotes; unescape backslashes\n      inner = inner.replace(/\\\\\\\\/g,'\\\\');\n    }\n    const trimmed = inner.trim();\n    if (trimmed) out.push(trimmed);\n  }\n  return out;\n}\n\nconst out = [];\n\nfor (const it of items){\n  // 1) Get the LLM output string\n  let txt = it.json?.output ?? it.json?.text ?? null;\n  if (typeof txt !== 'string') continue;\n\n  // 2) Clean wrappers and grab the { ... } block\n  txt = stripFences(txt);\n  let block = extractJsonBlock(txt);\n  if (!block) block = txt;\n\n  // 3) Try strict JSON.parse\n  let obj = null;\n  try { obj = JSON.parse(block); } catch {}\n\n  // 4) If strict failed, try a loose fix then parse\n  if (!obj){\n    const fixed = looseFix(block);\n    try { obj = JSON.parse(fixed); } catch {}\n  }\n\n  // 5) If still no luck, directly extract queries[] tokens\n  let queries = [];\n  if (obj && Array.isArray(obj.queries)){\n    queries = obj.queries;\n  } else {\n    queries = extractQueriesWithoutJSON(block);\n  }\n\n  // 6) Emit one item per query\n  for (const q of queries){\n    if (typeof q === 'string' && q.trim()){\n      out.push({ json: { query: q.trim() } });\n    }\n  }\n}\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        96
+      ],
+      "id": "04cab7bb-e1c0-48a9-95dc-35da58381452",
+      "name": "Code in JavaScript2",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "serpApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google_images"
+            },
+            {
+              "name": "q",
+              "value": "={{$json.query}} (map OR chart OR infographic OR interactive map) -pinterest -twitter -facebook -dreamstime -istock -shutterstock -medium"
+            },
+            {
+              "name": "num",
+              "value": "10"
+            },
+            {
+              "name": "tbs",
+              "value": "qdr:w"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1888,
+        96
+      ],
+      "id": "63e87872-e870-4c69-87f5-a1e8b070f60e",
+      "name": "SerpAPI",
+      "credentials": {
+        "serpApi": {
+          "id": "qdwFcDUGFzOq7dKh",
+          "name": "SerpAPI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{$json.direct_image_url}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; n8n-link-check/1.0)"
+            },
+            {
+              "name": "Referer",
+              "value": "={{$json.page_url}}"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 10
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2240,
+        112
+      ],
+      "id": "3a091b93-b1fd-43f8-9570-719629857ba1",
+      "name": "HEAD",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: items: [{ json: { images_results: [ { original, image, link, source, source_url, ... }, ... ], page_url?, url? } }, ...]\n// Output: [{ json: { _id, direct_image_url, page_url, domain, source_label } }, ...]\n\nconst out = [];\nlet rowId = 0;\n\nfor (const item of items) {\n  const d = item.json || {};\n  const results = Array.isArray(d.images_results) ? d.images_results : [];\n\n  for (const r of results) {\n    const img = r.original || r.image || r.thumbnail || null;\n    if (!img) continue;\n\n    // Prefer full article URL from the result itself:\n    let pageUrl = r.link || r.source_url || null;\n\n    // If the API only gave a human-readable \"source\" (e.g. \"NYT\"), try to coerce to a URL\n    if (!pageUrl && typeof r.source === 'string' && r.source.trim()) {\n      const s = r.source.trim();\n      // If it looks like a hostname, prefix https://\n      if (/^[a-z0-9.-]+\\.[a-z]{2,}$/i.test(s)) {\n        pageUrl = `https://${s}`;\n      }\n    }\n\n    // As a final fallback, if the parent item has a page/url, keep it\n    if (!pageUrl && (d.page_url || d.url)) {\n      pageUrl = d.page_url || d.url;\n    }\n\n    // Normalize pageUrl if it lacks scheme\n    if (typeof pageUrl === 'string' && pageUrl && !/^https?:\\/\\//i.test(pageUrl)) {\n      pageUrl = `https://${pageUrl}`;\n    }\n\n    // Derive domain if possible\n    let domain = null;\n    if (pageUrl) {\n      try {\n        const u = new URL(pageUrl);\n        domain = u.hostname.replace(/^www\\./, '');\n      } catch (e) {\n        // leave domain null if not a valid URL\n      }\n    } else if (typeof r.source === 'string') {\n      // store the label and attempt to keep it separately\n      domain = r.source.trim();\n    }\n\n    out.push({\n      json: {\n        _id: rowId++,\n        direct_image_url: img,\n        page_url: pageUrl,\n        domain,\n        source_label: (typeof r.source === 'string') ? r.source : null\n      }\n    });\n  }\n}\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        368
+      ],
+      "id": "fa64d52d-d822-4fa9-861e-f86c8380e041",
+      "name": "Collect Images"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Minimal sanitizer: only keep http(s) and drop obviously unusable schemes.\n// Do NOT drop by host/path yet.\n\nconst SCHEME_OK = /^https?:\\/\\//i;\nconst DROP_SCHEMES = [/^x-raw-image:/i, /^data:/i];\n\nfunction toOrigin(u){ try { return new URL(u).origin; } catch { return ''; } }\n\nconst out = [];\nfor (const it of items) {\n  let img = (it.json?.direct_image_url || '').trim();\n  let page = (it.json?.page_url || '').trim();\n\n  if (!img) continue;\n  // Drop non-HTTP and weird schemes\n  if (!SCHEME_OK.test(img)) continue;\n  if (DROP_SCHEMES.some(rx => rx.test(img))) continue;\n\n  // If page_url isn't a URL, fall back to the image origin\n  if (!SCHEME_OK.test(page)) page = toOrigin(img) || '';\n\n  out.push({ json: { direct_image_url: img, page_url: page } });\n}\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        368
+      ],
+      "id": "a3fe19b7-3209-4f35-a483-0b03a53fa2ad",
+      "name": "Sanitize for Head"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Input: items with json.direct_image_url (string), page_url (nullable), domain (nullable)\n * Output: cleaned records with:\n * ...all original fields (like page_url)\n * direct_image_url, direct_image_url_clean, domain, filename, ext,\n * is_thumbnail, flags (array of reasons), source_index (original order)\n * No network calls.\n */\n\nconst seen = new Set();\n\nfunction cleanUrl(u) {\n  try {\n    const url = new URL(u);\n    // strip common trackers / noise\n    const dropKeys = new Set([\n      'utm_source','utm_medium','utm_campaign','utm_term','utm_content',\n      'gclid','fbclid','ref','ref_src','ref_url','spm'\n    ]);\n    for (const k of [...url.searchParams.keys()]) {\n      const lk = k.toLowerCase();\n      if (lk.startsWith('utm_') || dropKeys.has(lk)) url.searchParams.delete(k);\n    }\n    // normalize host (lowercase) & remove default ports\n    url.hostname = url.hostname.toLowerCase();\n    if ((url.protocol === 'http:' && url.port === '80') || (url.protocol === 'httpss:' && url.port === '443')) {\n      url.port = '';\n    }\n    return url.toString();\n  } catch {\n    return u;\n  }\n}\n\nfunction getDomain(u) {\n  try {\n    const h = new URL(u).hostname.toLowerCase();\n    return h.replace(/^www\\./, '');\n  } catch { return null; }\n}\n\nfunction filenameFromUrl(u) {\n  try {\n    const path = new URL(u).pathname;\n    const leaf = decodeURIComponent(path.split('/').filter(Boolean).pop() || '');\n    return leaf || null;\n  } catch { return null; }\n}\n\nfunction extFromFilename(name) {\n  if (!name) return null;\n  const m = name.toLowerCase().match(/\\.([a-z0-9]{2,5})(?:$|\\?)/);\n  return m ? m[1] : null;\n}\n\n// quick classifiers for thumbnails/sprites/low-value URLs (no HEAD)\nfunction guessThumbnail(u, filename) {\n  const urlLower = u.toLowerCase();\n  const nameLower = (filename || '').toLowerCase();\n\n  // heuristics: size prefixes (e.g., 250px-foo.png) or sprite sheets or \"thumb\" segments\n  if (/\\/thumbs?\\//.test(urlLower)) return true;\n  if (/\\/thumbnail/.test(urlLower)) return true;\n  if (/(^|\\/)[0-9]{2,4}px-/.test(urlLower)) return true; // 250px-, 500px-\n  if (/\\bthumb(?:nail)?\\b/.test(nameLower)) return true;\n  if (/\\bsprite(s)?\\b/.test(nameLower)) return true;\n  if (/\\bicon(s)?\\b/.test(nameLower)) return true;\n\n  // known hosts that are frequently thumbnails (tune to taste)\n  const host = getDomain(u) || '';\n  if (host.endsWith('ytimg.com') && /default|mqdefault|maxresdefault/.test(nameLower)) return true;\n  if (host.endsWith('arcgis.com') && /thumbnail/.test(urlLower)) return true;\n  if (host.endsWith('wikimedia.org') && /\\/thumb\\//.test(urlLower)) return true;\n\n  return false;\n}\n\nconst ALLOW_EXT = new Set(['jpg','jpeg','png','webp','gif','bmp','tif','tiff','svg']); // adjust as needed\nconst DROP_EXT  = new Set(['svg']); // if you want raster-only, put 'svg' here\n\nreturn items.reduce((acc, it, idx) => {\n  const j = it.json || {};\n  const raw = j.direct_image_url;\n  if (!raw || typeof raw !== 'string') return acc;\n\n  const cleaned = cleanUrl(raw);\n  // de-dupe by cleaned URL\n  if (seen.has(cleaned)) return acc;\n  seen.add(cleaned);\n\n  const domain = getDomain(cleaned);\n  const filename = filenameFromUrl(cleaned);\n  let ext = extFromFilename(filename);\n\n  // Some CDNs hide ext; attempt to infer from URL hints\n  if (!ext) {\n    // crude hints (e.g., &format=webp)\n    const lower = cleaned.toLowerCase();\n    if (/format=webp|\\.webp(\\b|$)/.test(lower)) ext = 'webp';\n    else if (/\\.png(\\b|$)/.test(lower)) ext = 'png';\n    else if (/\\.jpe?g(\\b|$)/.test(lower)) ext = 'jpg';\n    else if (/\\.gif(\\b|$)/.test(lower)) ext = 'gif';\n  }\n\n  // classify likely thumbs\n  const isThumb = guessThumbnail(cleaned, filename);\n  const flags = [];\n  if (isThumb) flags.push('thumbnail_guess');\n\n  // extension allow/drop\n  if (ext && !ALLOW_EXT.has(ext)) flags.push(`ext_unusual:${ext}`);\n  if (ext && DROP_EXT.has(ext)) flags.push(`ext_drop:${ext}`);\n\n  // If you want to *drop* thumbs/sprites and/or certain extensions, do it here:\n  const DROP_THUMBNAILS = true;    // set false to keep and just flag\n  const RASTER_ONLY = false;       // set true to drop SVG and keep raster only\n\n  if (DROP_THUMBNAILS && isThumb) return acc;\n  if (RASTER_ONLY && ext === 'svg') return acc;\n\n  acc.push({\n    json: {\n      ...j, // <-- THIS IS THE FIX\n      source_index: idx,\n      direct_image_url: raw,          // original (overwrites ...j if present)\n      direct_image_url_clean: cleaned,  // normalized\n      domain,\n      filename: filename || null,\n      ext: ext || null,\n      is_thumbnail: isThumb,\n      flags\n    }\n  });\n  return acc;\n}, []);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2432,
+        112
+      ],
+      "id": "b1411307-0004-46da-8db9-c528c5a39d8f",
+      "name": "Delete Duds"
+    },
+    {
+      "parameters": {
+        "jsCode": "// INPUT: items[i].json = { direct_image_url, page_url?, domain? }\n// OUTPUT: [{ json: { direct_image_url, direct_image_url_clean, page_url, image_host, page_host, domain, filename, ext, is_thumbnail, flags }}]\n\nconst seen = new Set();\n\nfunction safeUrl(u) { try { return new URL(u); } catch { return null; } }\n\nfunction cleanUrl(u) {\n  const url = safeUrl(u);\n  if (!url) return u;\n  const drop = [\n    'utm_source','utm_medium','utm_campaign','utm_term','utm_content',\n    'gclid','fbclid','ref','ref_src','ref_url','spm'\n  ];\n  for (const k of Array.from(url.searchParams.keys())) {\n    const lk = k.toLowerCase();\n    if (lk.startsWith('utm_') || drop.includes(lk)) url.searchParams.delete(k);\n  }\n  url.hostname = url.hostname.toLowerCase();\n  if ((url.protocol === 'http:' && url.port === '80') || (url.protocol === 'https:' && url.port === '443')) url.port = '';\n  return url.toString();\n}\n\nfunction hostOf(u) { const x = safeUrl(u); return x ? x.hostname.toLowerCase().replace(/^www\\./,'') : null; }\n\nfunction filenameOf(u) {\n  const x = safeUrl(u); if (!x) return null;\n  const leaf = x.pathname.split('/').filter(Boolean).pop() || '';\n  try { return decodeURIComponent(leaf); } catch { return leaf; }\n}\n\nfunction extOf(name) {\n  if (!name) return null;\n  const m = name.toLowerCase().match(/\\.([a-z0-9]{2,5})(?:$|\\?)/);\n  return m ? m[1] : null;\n}\n\nfunction looksThumb(u, name) {\n  const s = (u || '').toLowerCase();\n  const n = (name || '').toLowerCase();\n  if (s.includes('/thumb/') || s.includes('/thumbs/') || s.includes('/thumbnail')) return true;\n  if (/\\/[0-9]{2,4}px-/.test(s)) return true;\n  if (/\\bthumb(nail)?\\b/.test(n)) return true;\n  if (/\\b(sprite|icons?)\\b/.test(n)) return true;\n  const h = hostOf(u) || '';\n  if (h.endsWith('ytimg.com') && /(default|mqdefault|maxresdefault)/.test(n)) return true;\n  if (h.endsWith('arcgis.com') && s.includes('thumbnail')) return true;\n  if (h.endsWith('wikimedia.org') && s.includes('/thumb/')) return true;\n  return false;\n}\n\n// toggles\nconst DROP_THUMBNAILS = false; // keep thumbs but flag; curator can drop later\nconst RASTER_ONLY = false;     // set true to drop SVGs\n\nconst ALLOW_EXT = new Set(['jpg','jpeg','png','webp','gif','bmp','tif','tiff','svg']);\n\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const raw = j.direct_image_url;\n  if (typeof raw !== 'string' || !raw) continue;\n\n  const cleaned = cleanUrl(raw);\n  if (seen.has(cleaned)) continue;\n  seen.add(cleaned);\n\n  const file = filenameOf(cleaned);\n  let ext = extOf(file);\n  if (!ext) {\n    const low = cleaned.toLowerCase();\n    if (low.includes('format=webp')) ext = 'webp';\n    else if (low.includes('.png')) ext = 'png';\n    else if (low.includes('.jpg') || low.includes('.jpeg')) ext = 'jpg';\n    else if (low.includes('.gif')) ext = 'gif';\n  }\n\n  const thumb = looksThumb(cleaned, file);\n  if (DROP_THUMBNAILS && thumb) continue;\n  if (RASTER_ONLY && ext === 'svg') continue;\n\n  const flags = [];\n  if (thumb) flags.push('thumbnail_guess');\n  if (ext && !ALLOW_EXT.has(ext)) flags.push('ext_unusual:' + ext);\n\n  const page = (typeof j.page_url === 'string') ? j.page_url : null;\n\n  out.push({\n    json: {\n      direct_image_url: raw,\n      direct_image_url_clean: cleaned,\n      page_url: page,\n      image_host: hostOf(cleaned),\n      page_host: hostOf(page),\n      domain: j.domain || hostOf(page) || hostOf(cleaned) || null,\n      filename: file || null,\n      ext: ext || null,\n      is_thumbnail: thumb,\n      flags\n    }\n  });\n}\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2624,
+        112
+      ],
+      "id": "d101e9f7-d7e8-44f6-b98d-a5137a106a95",
+      "name": "Formalize and Sanitize"
+    },
+    {
+      "parameters": {
+        "jsCode": "// to-rows mapper (Code node -> items out)\nreturn items.map((it, i) => {\n  const j = it.json || {};\n\n  // r may be:\n  // - an object with { keep, quality_score, ... }\n  // - a JSON string (from LLM text)\n  // - nested under j.result\n  let r0 = (j.result != null ? j.result : j);\n  if (typeof r0 === 'string') {\n    try {\n      r0 = JSON.parse(r0);\n    } catch {\n      // If it's not valid JSON, fall back to empty object\n      r0 = {};\n    }\n  }\n  const r = (r0 && typeof r0 === 'object') ? r0 : {};\n\n  // Normalize arrays/booleans\n  const topicsArr =\n    Array.isArray(r.inferred_topics) ? r.inferred_topics :\n    (typeof r.inferred_topics === 'string' ? [r.inferred_topics] : []);\n\n  return {\n    json: {\n      idx: j.source_index ?? i,\n      direct_image_url: j.direct_image_url ?? null,\n      direct_image_url_clean: j.direct_image_url_clean ?? null,\n      page_url_raw: j.page_url_raw ?? null,\n      page_url_resolved: j.page_url_resolved ?? null,\n      domain: j.domain ?? null,\n      filename: j.filename ?? null,\n      ext: j.ext ?? null,\n      is_thumbnail_flag: Array.isArray(j.flags) && j.flags.includes('thumbnail_guess'),\n      content_type: j.content_type ?? null,\n      content_length: j.content_length ?? null,\n\n      // Curator outputs (with safe fallbacks):\n      keep: Boolean(r.keep ?? false),\n      quality_score: Number(r.quality_score ?? 0),\n      category: r.category ?? null,\n      reason: r.reason ?? null,\n      dedupe_key: r.dedupe_key ?? null,\n      // FIXED: no stray identifier; prefer is_stock_appreciated, else is_stock_watermark\n      stock_watermark: Boolean(\n        (typeof r.is_stock_appreciated !== 'undefined' ? r.is_stock_appreciated :\n         (typeof r.is_stock_watermark !== 'undefined' ? r.is_stock_watermark : false))\n      ),\n      screenshot_ui: Boolean(r.is_screenshot_ui ?? false),\n      text_present: (typeof r.text_present === 'boolean') ? r.text_present : null,\n      topics: topicsArr.join(', '),\n      alt_text: r.alt_text ?? null,\n      page_title: r.page_title ?? null,\n      canonical_page_url: r.canonical_page_url ?? j.page_url_raw ?? j.page_url_resolved ?? null\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3472,
+        336
+      ],
+      "id": "24b0b99b-ab85-48e3-a212-50b0dcabab97",
+      "name": "To Rows"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1UWaVeXdw8YCauJrnPivTxglRrsYWALESTpFJcG1sLgk",
+          "mode": "list",
+          "cachedResultName": "images for Chordus",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UWaVeXdw8YCauJrnPivTxglRrsYWALESTpFJcG1sLgk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UWaVeXdw8YCauJrnPivTxglRrsYWALESTpFJcG1sLgk/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "\ndedupe_key"
+          ],
+          "schema": [
+            {
+              "id": "\ndedupe_key",
+              "displayName": "\ndedupe_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "idx",
+              "displayName": "idx",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "direct_image_url",
+              "displayName": "direct_image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "direct_image_url_clean",
+              "displayName": "direct_image_url_clean",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "page_url_raw",
+              "displayName": "page_url_raw",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "page_url_resolved",
+              "displayName": "page_url_resolved",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "domain",
+              "displayName": "domain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "filename",
+              "displayName": "filename",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ext",
+              "displayName": "ext",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "is_thumbnail_flag",
+              "displayName": "is_thumbnail_flag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "content_type",
+              "displayName": "content_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "content_length",
+              "displayName": "content_length",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "keep",
+              "displayName": "keep",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "quality_score",
+              "displayName": "quality_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "dedupe_key",
+              "displayName": "dedupe_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "stock_watermark",
+              "displayName": "stock_watermark",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "screenshot_ui",
+              "displayName": "screenshot_ui",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "text_present",
+              "displayName": "text_present",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "topics",
+              "displayName": "topics",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "alt_text",
+              "displayName": "alt_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "page_title",
+              "displayName": "page_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "canonical_page_url",
+              "displayName": "canonical_page_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3648,
+        336
+      ],
+      "id": "f7d2eb6b-00b3-4444-b97f-44a56affee8c",
+      "name": "Append or update row in sheet",
+      "retryOnFail": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "nESVclaI8wKi4WxC",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---- helper goes first ----\nfunction extractCurator(j) {\n  let r = (j && j.result != null) ? j.result : null;\n  if (typeof r === 'string') { try { r = JSON.parse(r); } catch { r = null; } }\n  if (r && typeof r === 'object' && typeof r.keep !== 'undefined') return r;\n\n  const candidates = j?.candidates;\n  if (Array.isArray(candidates)) {\n    for (const c of candidates) {\n      const parts = c?.content?.parts;\n      if (Array.isArray(parts)) {\n        for (const p of parts) {\n          const t = p?.text;\n          if (typeof t === 'string' && t.trim()) {\n            let s = t.trim();\n            const m = s.match(/\\{[\\s\\S]*\\}/);\n            if (m) s = m[0];\n            try {\n              const parsed = JSON.parse(s);\n              if (parsed && typeof parsed.keep !== 'undefined') return parsed;\n            } catch {}\n          }\n        }\n      }\n    }\n  }\n\n  if (typeof j === 'string') {\n    try { const parsed = JSON.parse(j); if (parsed && typeof parsed.keep !== 'undefined') return parsed; } catch {}\n  }\n  return null;\n}\n// ---- your node logic uses the helper below ----\n\nconst out = [];\nconst seen = new Set();\n\nfor (const it of items) {\n  const j = it.json || {};\n  const r = extractCurator(j);\n  if (!r || !r.keep) continue;\n\n  const url = (j.direct_image_url || r.direct_image_url || j.url || '').toString().trim();\n  if (!url) continue;\n  if (seen.has(url)) continue;\n  seen.add(url);\n\n  j.result = r; // stash parsed curator for downstream nodes\n  out.push({ json: j });\n}\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3296,
+        336
+      ],
+      "id": "d94b844c-08ab-422d-a719-b9df4241b377",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Please analyze the image I've uploaded based on your system instructions. Here is its metadata: {{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "jsonOutput": true,
+        "options": {
+          "systemMessage": "You are \"Curator,\" a cautious multimodal content analyst. Your job is to look at the provided IMAGE and its METADATA (JSON), then decide if the image is a high-quality, information-rich asset for a research deck about business, technology, or policy.  Return ONLY a single strict JSON object (no extra text). Do NOT invent fields; for the “pass-through” keys, copy them from METADATA if present, otherwise return null. Do NOT guess URLs.  KEEP Criteria  Photos: Clear, high-quality photos of real-world scenes/people/objects with context.  Data Visualizations: Legible charts/graphs/infographics/maps with readable text and clear context.  Screenshots: Only if they show meaningful content (software UI, website, dashboard, document, data).  REJECT Criteria  Low Quality: Blurry, pixelated, tiny thumbnails, corrupt files.  Low Value: Isolated logos/icons/sprites/QRs or decorative clipart.  Stock Photos: Obvious watermarks (“Shutterstock”, “Getty”, “Alamy”, etc.).  Social/Video: YouTube thumbnails, social media profile pics, or screenshots of social UI posts.  Other: Memes, reaction GIFs, NSFW, ads.  Output Schema (strict JSON, keys and types exactly as defined)  { \"keep\": (boolean), \"reason\": (string), // 1–10 words \"quality_score\": (number), // 0.0–1.0 \"category\": (string), // one of: \"photo\",\"chart\",\"map\",\"infographic\",\"screenshot\",\"logo\",\"document_scan\",\"product\",\"low_value\",\"other\"  // Pass-through fields (copy from METADATA if present; else null, never invent): \"direct_image_url\": (string|null), \"page_url_raw\": (string|null), \"page_url_resolved\": (string|null), \"canonical_page_url\": (string|null), // if METADATA.canonical_page_url exists; else copy page_url_raw or page_url_resolved or null \"domain\": (string|null), \"filename\": (string|null), \"ext\": (string|null), \"source_index\": (number|null),  // Optional curator signals (copy booleans if present; else false/null): \"is_stock_watermark\": (boolean), // true only if watermark visible; else false \"is_screenshot_ui\": (boolean), // true if it’s clearly a UI/website/app screen \"text_present\": (boolean|null), // null if unknown \"inferred_topics\": (array|null), // array of short topic strings or null  // De-dupe hint (copy from METADATA if present; else compose from URL/filename/IDs or null): \"dedupe_key\": (string|null) }  Rules  Output only JSON. No backticks, no commentary.  For pass-through fields, copy exact values from METADATA if present. If absent, output null (except canonical_page_url where you may fallback to page_url_raw then page_url_resolved if those exist; else null).  Do not fabricate URLs, filenames, or domains.  quality_score reflects both usefulness and resolution/legibility.  Keep the reason concise (1–10 words)."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        2976,
+        336
+      ],
+      "id": "da2cc10e-38f1-45da-ba39-3b9483af50e7",
+      "name": "Curator (Expensive)",
+      "retryOnFail": true,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "fDvUTcE2cBXZBRC5",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=I need new visual artifacts today. Output 5 topics, 12 queries (mix general + operator queries), and 6 site_bias patterns (e.g., “graphics desk”, “research lab”, “NGO report”, “local news data desk”, \"interactive map\"). Avoid domains seen in the last 30 days (I will filter after).\n\nDo not repeat any phrase in BAN_PHRASES (case-insensitive). Avoid overused BAN_TERMS.\nBAN_PHRASES: {{ JSON.stringify($json.ban_phrases) }}\nBAN_TERMS: {{ JSON.stringify($json.ban_terms) }}\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You propose discovery queries and outlet patterns for finding fresh maps/charts/infographics/interactive maps that are publicly accessible and not paywalled. Output only JSON with:\n{\"topics\":[...], \"queries\":[...], \"site_bias\":[...]}\nDo not include URLs in this step.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        960,
+        96
+      ],
+      "id": "ddbdb00c-5aaf-4ce6-a40e-eed2691aca31",
+      "name": "Finder"
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2896,
+        112
+      ],
+      "id": "00b07b8f-2fa5-4375-9dde-cb7d39fa2ea1",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Input items (from your fan-out): [{ json: { query: string } }, ...]\n * Output items: kept queries only: { query, query_norm }\n * Memory: workflow static data (global) under STORE_KEY\n *\n * Execution mode: Run Once for All Items\n */\nconst WINDOW_DAYS   = 30;\nconst MAX_MEMORY    = 5000;\nconst SIM_THRESHOLD = 0.90; // Jaccard on word trigrams\nconst STORE_KEY     = 'finder_memory_v1';\n\nfunction normalize(q) {\n  return String(q)\n    .toLowerCase()\n    .normalize('NFKC')\n    .replace(/\\s+/g, ' ')\n    .replace(/[“”„‟]/g, '\"')\n    .replace(/[’‘`´]/g, \"'\")\n    .trim();\n}\nfunction shingles(s, n = 3) {\n  const toks = s.split(/\\s+/);\n  const out = [];\n  for (let i = 0; i <= toks.length - n; i++) out.push(toks.slice(i, i + n).join(' '));\n  return new Set(out);\n}\nfunction jaccard(a, b) {\n  let inter = 0;\n  for (const x of a) if (b.has(x)) inter++;\n  const union = a.size + b.size - inter;\n  return union ? inter / union : 0;\n}\n\n// Load / init memory\nconst globalStore = $getWorkflowStaticData('global');\nif (!globalStore[STORE_KEY]) globalStore[STORE_KEY] = { list: [] };\nconst store  = globalStore[STORE_KEY];\nconst now    = Date.now();\nconst cutoff = now - WINDOW_DAYS * 864e5;\n\n// prune expired\nstore.list = store.list.filter(r => (r.last || r.first || now) >= cutoff);\n\n// index exact dupes\nconst bySig = new Map(store.list.map(r => [r.sig, r]));\n\n// Filter this batch\nconst seenThisRun = new Set();\nconst kept = [];\n\nfor (const it of items) {\n  const q = it.json?.query;\n  if (!q) continue;\n\n  const norm = normalize(q);\n  if (seenThisRun.has(norm)) continue; // dup within this run\n  if (bySig.has(norm)) continue;       // exact dup in memory\n\n  // near-dup vs memory (trigram Jaccard)\n  const sh = shingles(norm, 3);\n  let near = false;\n  for (const r of store.list) {\n    r._sh ||= shingles(r.sig, 3);\n    if (jaccard(sh, r._sh) >= SIM_THRESHOLD) { near = true; break; }\n  }\n  if (near) continue;\n\n  // keep and stage for memory\n  kept.push({ json: { query: q, query_norm: norm } });\n  seenThisRun.add(norm);\n}\n\n// Write kept queries to memory (once)\nfor (const k of kept) {\n  const sig = k.json.query_norm;\n  store.list.push({ sig, first: now, last: now, count: 1 });\n  bySig.set(sig, true);\n}\n\n// cap memory\nstore.list.sort((a,b) => (b.last || b.first) - (a.last || a.first));\nif (store.list.length > MAX_MEMORY) store.list.length = MAX_MEMORY;\n\n// Return only novel queries downstream\nreturn kept;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        112
+      ],
+      "id": "727ba653-2077-4eec-980d-a94ccb619026",
+      "name": "Dedupe and Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Outputs ONE item: { ban_phrases, ban_terms, window_days }\n// Execution mode: Run Once for All Items\n\nconst WINDOW_DAYS = 30;\nconst STORE_KEY   = 'finder_memory_v1';\nconst MAX_PHRASES = 2000;\nconst MAX_TERMS   = 120;\n\nconst STOP = new Set([\n  'the','a','an','and','or','of','in','to','for','on','with','by','about','at','from',\n  'how','what','why','when','where','is','are','be','as','into','vs','v','&','–','—'\n]);\n\n// IMPORTANT: new Code node API\nconst globalStore = $getWorkflowStaticData('global'); // persists across runs\nif (!globalStore[STORE_KEY]) globalStore[STORE_KEY] = { list: [] };\n\nconst store  = globalStore[STORE_KEY];\nconst cutoff = Date.now() - WINDOW_DAYS * 864e5;\n\n// Pull recent normalized phrases\nconst phrases = Array.from(new Set(\n  store.list.filter(r => (r.last || r.first || 0) >= cutoff).map(r => r.sig)\n)).slice(0, MAX_PHRASES);\n\n// Build simple “overused terms” list\nconst counts = {};\nfor (const p of phrases) {\n  for (const tok of p.split(/\\s+/)) {\n    if (!tok || STOP.has(tok)) continue;\n    counts[tok] = (counts[tok] || 0) + 1;\n  }\n}\nconst terms = Object.entries(counts)\n  .sort((a,b) => b[1] - a[1])\n  .slice(0, MAX_TERMS)\n  .map(([t]) => t);\n\n// Return a single item\nreturn [{ json: { ban_phrases: phrases, ban_terms: terms, window_days: WINDOW_DAYS } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        96
+      ],
+      "id": "0607bef1-aa58-4477-8caf-ed0ae550cc07",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "daysInterval": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        432,
+        256
+      ],
+      "id": "ad4e29eb-a1c6-49dd-aa82-640c443964f4",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Test Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Finder",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Finder",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Dedupe and Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SerpAPI": {
+      "main": [
+        [
+          {
+            "node": "Collect Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HEAD": {
+      "main": [
+        [
+          {
+            "node": "Delete Duds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Images": {
+      "main": [
+        [
+          {
+            "node": "Sanitize for Head",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize for Head": {
+      "main": [
+        [
+          {
+            "node": "HEAD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Duds": {
+      "main": [
+        [
+          {
+            "node": "Formalize and Sanitize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formalize and Sanitize": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To Rows": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "To Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Curator (Expensive)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finder": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Curator (Expensive)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedupe and Memory": {
+      "main": [
+        [
+          {
+            "node": "SerpAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Finder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "c88bd720-c7ff-4f08-a6e9-bd9ffb300dac",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8e66815c4bc1fad7e078f1006f7d377ee268258d8363a2df0e4d562fc5e9396c"
+  },
+  "id": "btC7DyZWs0PHNLB7",
+  "tags": []
+}
