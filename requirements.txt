@@ -1,0 +1,16 @@
+# Ollama System Tray Assistant - Python Dependencies
+
+# System tray integration
+pystray>=0.19.4
+
+# Image processing for tray icon
+Pillow>=10.0.0
+
+# Global hotkey support
+keyboard>=0.13.5
+
+# Ollama Python client
+ollama>=0.1.0
+
+# Note: tkinter is included with Python standard library
+# No additional installation needed for tkinter
