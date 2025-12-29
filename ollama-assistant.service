@@ -1,0 +1,21 @@
+[Unit]
+Description=Ollama Multi-Agent Assistant
+After=network.target graphical.target
+
+[Service]
+Type=simple
+# Replace USER with your username
+User=%i
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=/home/%i/.Xauthority"
+WorkingDirectory=/home/%i/path/to/Agents
+ExecStart=/usr/bin/python3 /home/%i/path/to/Agents/ollama_multi_agent_tray.py
+Restart=on-failure
+RestartSec=5s
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

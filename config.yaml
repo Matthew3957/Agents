@@ -6,17 +6,22 @@ router:
   temperature: 0.3     # Lower temperature for consistent routing
 
 # Specialized agents configuration
+# Model selection strategy:
+#   - gemma3:1b: Simple tasks, drafting, casual conversation
+#   - gemma2:2b: Medium complexity tasks, general work
+#   - gemma3:4b: Complex tasks requiring deeper reasoning
+
 agents:
-  # General conversation agent
+  # General conversation agent - simple, lightweight
   general:
-    model: "ministral:3b"
+    model: "gemma3:1b"
     description: "General conversation, simple questions, and casual chat"
     temperature: 0.7
     tools: []
 
-  # File management agent
+  # File management agent - medium complexity
   file_manager:
-    model: "ministral:3b"
+    model: "gemma2:2b"
     description: "File operations, saving documents, reading files, managing directories"
     temperature: 0.3
     tools:
@@ -26,9 +31,9 @@ agents:
       - create_directory
       - delete_file
 
-  # Calendar management agent
+  # Calendar management agent - medium complexity
   calendar:
-    model: "ministral:3b"
+    model: "gemma2:2b"
     description: "Calendar management, scheduling events, checking availability"
     temperature: 0.3
     tools:
@@ -36,18 +41,18 @@ agents:
       - list_events
       - delete_event
 
-  # Web search agent
+  # Web search agent - medium complexity
   web_search:
-    model: "ministral:3b"
+    model: "gemma2:2b"
     description: "Internet search, current information, web queries, news"
     temperature: 0.5
     tools:
       - web_search
       - fetch_url
 
-  # Document analysis agent
+  # Document analysis agent - complex task requiring deeper analysis
   document_analyst:
-    model: "ministral:3b"
+    model: "gemma3:4b"
     description: "Document reading, analysis, summarization, extracting information from PDFs/DOCX"
     temperature: 0.4
     tools:
@@ -55,9 +60,9 @@ agents:
       - analyze_document
       - extract_text
 
-  # Code helper agent
+  # Code helper agent - complex task requiring technical reasoning
   code_helper:
-    model: "ministral:3b"
+    model: "gemma3:4b"
     description: "Code writing, debugging, technical questions, running Python scripts"
     temperature: 0.6
     tools:

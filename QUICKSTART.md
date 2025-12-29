@@ -13,8 +13,9 @@ curl -fsSL https://ollama.com/install.sh | sh
 ## 2️⃣ Pull Required Models
 
 ```bash
-ollama pull gemma2:2b       # Fast router (~1.6GB)
-ollama pull ministral:3b    # Agent model (~2.2GB)
+ollama pull gemma3:1b       # Simple tasks (~1GB)
+ollama pull gemma2:2b       # Medium tasks + routing (~1.6GB)
+ollama pull gemma3:4b       # Complex tasks (~2.5GB)
 ```
 
 ## 3️⃣ Install Python Dependencies
@@ -109,6 +110,34 @@ Once running:
 - Click "Agents Info" to see available agents
 - Use "auto" mode to let the router decide
 - Or manually select an agent from the dropdown
+
+## 🔄 Running Without Terminal Open
+
+Want to run in the background without keeping a terminal open?
+
+### Linux/macOS
+```bash
+# Quick method
+./run_background.sh start
+
+# Or install as a service (auto-start on boot)
+# See DEPLOYMENT.md for full instructions
+```
+
+### Windows
+```batch
+# Run the installer as Administrator
+install_windows_service.bat
+
+# Or use Task Scheduler - see DEPLOYMENT.md
+```
+
+### Docker
+```bash
+docker-compose up -d
+```
+
+📖 **See [DEPLOYMENT.md](DEPLOYMENT.md)** for complete setup instructions for systemd, Windows services, launchd, and Docker.
 
 ## ❓ Troubleshooting
 

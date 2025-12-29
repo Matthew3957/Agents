@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Multi-agent assistant application
+  ollama-assistant:
+    build: .
+    container_name: ollama-multi-agent-assistant
+    environment:
+      - DISPLAY=${DISPLAY}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+    volumes:
+      # X11 socket for GUI
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # Persistent data
+      - ${HOME}/.ollama_multi_agent_history.json:/root/.ollama_multi_agent_history.json
+      - ${HOME}/.ollama_multi_agent_saved.json:/root/.ollama_multi_agent_saved.json
+      - ${HOME}/OllamaAssistant:/root/OllamaAssistant
+      # Optional: Google Calendar credentials
+      - ${HOME}/.ollama_calendar_credentials.json:/root/.ollama_calendar_credentials.json:ro
+      - ${HOME}/.ollama_calendar_token.pickle:/root/.ollama_calendar_token.pickle
+      # Config
+      - ./config.yaml:/app/config.yaml:ro
+    network_mode: "host"
+    devices:
+      - /dev/input:/dev/input  # For keyboard hotkey access
+    privileged: true  # Required for keyboard access and system tray
+    restart: unless-stopped
+
+# Note: This setup requires:
+# 1. X11 forwarding enabled: xhost +local:docker
+# 2. Ollama running on host or accessible network
+# 3. Running on Linux (for X11 and keyboard access)
+#
+# Before running:
+#   xhost +local:docker
+#   docker-compose up -d
+#
+# For macOS/Windows, consider running natively as a service instead
