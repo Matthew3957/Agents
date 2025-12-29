@@ -1,0 +1,78 @@
+# Multi-Agent Ollama Assistant Configuration
+
+# Router configuration - decides which agent handles each request
+router:
+  model: "gemma2:2b"  # Fast, lightweight model for routing decisions
+  temperature: 0.3     # Lower temperature for consistent routing
+
+# Specialized agents configuration
+# Model selection strategy:
+#   - gemma3:1b: Simple tasks, drafting, casual conversation
+#   - gemma2:2b: Medium complexity tasks, general work
+#   - gemma3:4b: Complex tasks requiring deeper reasoning
+
+agents:
+  # General conversation agent - simple, lightweight
+  general:
+    model: "gemma3:1b"
+    description: "General conversation, simple questions, and casual chat"
+    temperature: 0.7
+    tools: []
+
+  # File management agent - medium complexity
+  file_manager:
+    model: "gemma2:2b"
+    description: "File operations, saving documents, reading files, managing directories"
+    temperature: 0.3
+    tools:
+      - read_file
+      - write_file
+      - list_directory
+      - create_directory
+      - delete_file
+
+  # Calendar management agent - medium complexity
+  calendar:
+    model: "gemma2:2b"
+    description: "Calendar management, scheduling events, checking availability"
+    temperature: 0.3
+    tools:
+      - create_event
+      - list_events
+      - delete_event
+
+  # Web search agent - medium complexity
+  web_search:
+    model: "gemma2:2b"
+    description: "Internet search, current information, web queries, news"
+    temperature: 0.5
+    tools:
+      - web_search
+      - fetch_url
+
+  # Document analysis agent - complex task requiring deeper analysis
+  document_analyst:
+    model: "gemma3:4b"
+    description: "Document reading, analysis, summarization, extracting information from PDFs/DOCX"
+    temperature: 0.4
+    tools:
+      - read_file
+      - analyze_document
+      - extract_text
+
+  # Code helper agent - complex task requiring technical reasoning
+  code_helper:
+    model: "gemma3:4b"
+    description: "Code writing, debugging, technical questions, running Python scripts"
+    temperature: 0.6
+    tools:
+      - read_file
+      - write_file
+      - execute_code
+
+# You can customize:
+# - Add more agents
+# - Change models (e.g., llama3.2:3b, phi3:mini)
+# - Adjust temperatures (lower = more focused, higher = more creative)
+# - Assign different tools to agents
+# - Modify agent descriptions to refine routing
