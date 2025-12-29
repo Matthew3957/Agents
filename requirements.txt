@@ -1,4 +1,4 @@
-# Ollama System Tray Assistant - Python Dependencies
+# Ollama Multi-Agent System Tray Assistant - Python Dependencies
 
 # System tray integration
 pystray>=0.19.4
@@ -11,6 +11,21 @@ keyboard>=0.13.5
 
 # Ollama Python client
 ollama>=0.1.0
+
+# Configuration files
+PyYAML>=6.0
+
+# Web requests and search
+requests>=2.31.0
+
+# Google Calendar integration (optional)
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.1
+google-auth-oauthlib>=1.1.0
+
+# Document processing (optional)
+PyPDF2>=3.0.0
+python-docx>=1.0.0
 
 # Note: tkinter is included with Python standard library
 # No additional installation needed for tkinter
