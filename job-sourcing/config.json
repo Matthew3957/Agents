@@ -1,0 +1,81 @@
+{
+  "search_preferences": {
+    "locations": [
+      "Remote",
+      "San Diego, CA",
+      "Hybrid (San Diego)"
+    ],
+    "exclude_locations": [
+      "On-site only (non-SD)"
+    ],
+    "salary_min": 120000,
+    "salary_max": 180000
+  },
+  "target_titles": [
+    "AI Solutions Architect",
+    "Solutions Architect",
+    "Solutions Engineer",
+    "Technical Customer Success Manager",
+    "Customer Success Engineer",
+    "Implementation Specialist",
+    "Implementation Engineer",
+    "Technical Account Manager",
+    "Learning Experience Designer",
+    "Instructional Designer (AI/Tech)",
+    "Quality Analyst",
+    "Quality Manager",
+    "AI Evaluation Specialist",
+    "Partner Enablement Manager",
+    "Technical Enablement",
+    "Customer Enablement",
+    "AI Trainer",
+    "Model Evaluation Lead"
+  ],
+  "target_industries": [
+    "AI/ML",
+    "Developer Tools",
+    "EdTech",
+    "SaaS",
+    "Enterprise Software"
+  ],
+  "target_companies": {
+    "tier_1_dream": [
+      "Anthropic",
+      "Mistral AI",
+      "Hugging Face"
+    ],
+    "tier_1_strong": [
+      "Cohere",
+      "n8n",
+      "MagicSchool AI",
+      "Weights & Biases",
+      "Notion",
+      "Figma",
+      "Linear",
+      "Vercel"
+    ],
+    "tier_2_interested": [
+      "Descript",
+      "Runway",
+      "Jasper",
+      "Copy.ai",
+      "Writer",
+      "Grammarly",
+      "Duolingo",
+      "Khan Academy",
+      "Coursera"
+    ]
+  },
+  "search_sources": [
+    "LinkedIn Jobs",
+    "Wellfound (AngelList)",
+    "Y Combinator Work at a Startup",
+    "Company career pages",
+    "Greenhouse boards",
+    "Lever boards"
+  ],
+  "daily_target": {
+    "min_jobs": 1,
+    "max_jobs": 5
+  }
+}

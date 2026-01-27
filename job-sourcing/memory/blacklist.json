@@ -1,0 +1,58 @@
+{
+  "companies": {
+    "ethical_concerns": [
+      {
+        "name": "Scale AI",
+        "reason": "Ethical concerns - not interested",
+        "added": "2026-01-27"
+      }
+    ],
+    "rejected_or_ghosted": [
+      {
+        "name": "Cadre",
+        "reason": "Ghosted after final rounds with all founders",
+        "date": "2025",
+        "added": "2026-01-27"
+      },
+      {
+        "name": "Mistral AI",
+        "reason": "Passed after comprehensive partner enablement case study",
+        "date": "2025",
+        "added": "2026-01-27",
+        "notes": "Still a dream company - may reapply for different roles later"
+      },
+      {
+        "name": "Glean",
+        "reason": "Passed after final interview stages",
+        "date": "2025",
+        "added": "2026-01-27"
+      },
+      {
+        "name": "Snorkel AI",
+        "reason": "LXD role - low recruiter priority after 12/9 screen, likely dead",
+        "date": "2025-12",
+        "added": "2026-01-27",
+        "notes": "Still working as Expert Contributor - different team"
+      }
+    ],
+    "culture_concerns": []
+  },
+  "role_types_to_skip": [
+    "Pure Software Engineer",
+    "Backend Engineer",
+    "Frontend Engineer",
+    "Full Stack Developer",
+    "Data Engineer",
+    "ML Engineer (research-heavy)",
+    "Sales (quota-carrying)",
+    "SDR/BDR"
+  ],
+  "red_flags": [
+    "High-pressure sales culture",
+    "\"Family\" culture without boundaries",
+    "Ambiguous equity offerings",
+    "Unstable funding (pre-seed without runway clarity)",
+    "On-site only (non-San Diego)",
+    "Requires relocation"
+  ]
+}

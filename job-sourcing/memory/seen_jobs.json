@@ -1,0 +1,7 @@
+{
+  "jobs": [],
+  "last_updated": "2026-01-27",
+  "total_surfaced": 0,
+  "total_applied": 0,
+  "notes": "Jobs are deduped by company+title+location hash. Each entry includes date_seen, status (surfaced/applied/passed/expired), and your feedback."
+}

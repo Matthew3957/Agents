@@ -1,0 +1,11 @@
+{
+  "sessions": [],
+  "learned_preferences": {
+    "positive_signals": [],
+    "negative_signals": [],
+    "title_preferences": {},
+    "company_size_preference": null,
+    "industry_weights": {}
+  },
+  "notes": "After each job sourcing session, your feedback is logged here. Patterns are extracted to refine future searches."
+}
