@@ -1,0 +1,347 @@
+{
+  "name": "Daily Job Sourcing Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24,
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily 6am Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300],
+      "notes": "Runs at 6am daily so results are ready when you wake up"
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Test Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [200, 480]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID_HERE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Active Applications",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "read-applications",
+      "name": "Read Active Applications",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [440, 300],
+      "notes": "Reads your current applications to build exclusion list",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID_HERE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Rejections or Passed",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "read-rejections",
+      "name": "Read Rejections",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [440, 480],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build exclusion set from applications + rejections\nconst exclusions = new Set();\n\n// Get all items from both inputs\nconst activeApps = $('Read Active Applications').all();\nconst rejections = $('Read Rejections').all();\n\n// Add company+title combinations to exclusions\nfor (const item of [...activeApps, ...rejections]) {\n  const company = (item.json.Company || '').toLowerCase().trim();\n  const title = (item.json.Role || '').toLowerCase().trim();\n  if (company) {\n    exclusions.add(company);\n    if (title) {\n      exclusions.add(`${company}|${title}`);\n    }\n  }\n}\n\n// Hardcoded blacklist\nconst blacklist = ['scale ai', 'cadre'];\nfor (const b of blacklist) {\n  exclusions.add(b.toLowerCase());\n}\n\n// Search queries to run\nconst queries = [\n  'AI Solutions Architect remote',\n  'Customer Success Manager AI remote',\n  'Technical Customer Success remote',\n  'Implementation Specialist AI remote',\n  'Solutions Engineer AI San Diego',\n  'Customer Enablement Manager remote',\n  'AI Evaluation Specialist remote',\n  'Partner Enablement remote AI',\n  'site:boards.greenhouse.io \"solutions architect\" OR \"customer success\"',\n  'site:jobs.lever.co AI \"solutions\" OR \"enablement\" remote',\n  'site:wellfound.com AI \"customer success\" remote'\n];\n\nreturn [{ json: { \n  exclusions: Array.from(exclusions),\n  queries: queries,\n  date: new Date().toISOString().split('T')[0]\n}}];"
+      },
+      "id": "build-context",
+      "name": "Build Search Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fan out queries into separate items\nconst context = $input.first().json;\nconst queries = context.queries || [];\nconst exclusions = context.exclusions || [];\n\nreturn queries.map(q => ({\n  json: {\n    query: q,\n    exclusions: exclusions,\n    date: context.date\n  }\n}));"
+      },
+      "id": "fan-out-queries",
+      "name": "Fan Out Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 380]
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "serpApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "google"
+            },
+            {
+              "name": "q",
+              "value": "={{$json.query}}"
+            },
+            {
+              "name": "num",
+              "value": "20"
+            },
+            {
+              "name": "tbs",
+              "value": "qdr:d3"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "serpapi-search",
+      "name": "SerpAPI Job Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1080, 380],
+      "notes": "tbs=qdr:d3 limits to last 3 days",
+      "credentials": {
+        "serpApi": {
+          "id": "YOUR_SERPAPI_CREDENTIAL",
+          "name": "SerpAPI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract job listings from search results\n// Filter against exclusions\n\nconst results = [];\nconst seen = new Set();\n\nfor (const item of items) {\n  const exclusions = new Set((item.json.exclusions || []).map(e => e.toLowerCase()));\n  const organic = item.json.organic_results || [];\n  const jobs = item.json.jobs_results || [];\n  \n  // Process organic results (general web search)\n  for (const r of organic) {\n    const url = r.link || '';\n    const title = r.title || '';\n    const snippet = r.snippet || '';\n    \n    // Skip if not a job posting\n    if (!url.includes('job') && !url.includes('career') && !url.includes('lever') && !url.includes('greenhouse')) {\n      continue;\n    }\n    \n    // Extract company name (heuristic)\n    let company = '';\n    const domain = url.match(/(?:boards\\.greenhouse\\.io|jobs\\.lever\\.co)\\/([^\\/]+)/);\n    if (domain) company = domain[1].replace(/-/g, ' ');\n    else {\n      const hostMatch = url.match(/https?:\\/\\/(?:www\\.)?([^\\/]+)/);\n      if (hostMatch) company = hostMatch[1].split('.')[0];\n    }\n    \n    // Check exclusions\n    if (exclusions.has(company.toLowerCase())) continue;\n    \n    // Dedupe by URL\n    if (seen.has(url)) continue;\n    seen.add(url);\n    \n    results.push({\n      json: {\n        url: url,\n        title: title,\n        company: company,\n        snippet: snippet,\n        source: 'organic'\n      }\n    });\n  }\n  \n  // Process jobs_results if present\n  for (const j of jobs) {\n    const company = (j.company_name || '').toLowerCase();\n    if (exclusions.has(company)) continue;\n    \n    const key = `${company}|${j.title}`;\n    if (seen.has(key)) continue;\n    seen.add(key);\n    \n    results.push({\n      json: {\n        url: j.apply_link || j.share_link || '',\n        title: j.title || '',\n        company: j.company_name || '',\n        location: j.location || '',\n        salary: j.salary || '',\n        snippet: j.description || '',\n        source: 'jobs_results'\n      }\n    });\n  }\n}\n\n// Limit to top 15 for analysis\nreturn results.slice(0, 15);"
+      },
+      "id": "extract-jobs",
+      "name": "Extract & Filter Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 380]
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{$json.url}}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 5
+            }
+          }
+        }
+      },
+      "id": "verify-link",
+      "name": "Verify Link Live",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1480, 380],
+      "onError": "continueRegularOutput",
+      "notes": "Checks if job posting is still live"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter to only jobs with live links (200 status)\nconst live = [];\nfor (const item of items) {\n  const status = item.json.statusCode || item.json.status || 200;\n  if (status >= 200 && status < 400) {\n    live.push(item);\n  }\n}\nreturn live;"
+      },
+      "id": "filter-live",
+      "name": "Keep Live Only",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, 380]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Analyze this job posting for Matthew Simmons.\n\nJOB:\n- Title: {{ $json.title }}\n- Company: {{ $json.company }}\n- Location: {{ $json.location || 'Not specified' }}\n- URL: {{ $json.url }}\n- Description: {{ $json.snippet }}\n\nMATTHEW'S PROFILE:\n- Target: AI Solutions Architect, Technical Customer Success, Implementation Specialist, Enablement roles\n- Location: MUST be Remote or San Diego (strict requirement)\n- Salary: $120K-$180K\n- Background: 400+ AI evaluations, 6 years teaching, B2B SaaS customer success, production AI agents\n- NOT: Pure software engineering, quota-carrying sales\n- Value prop: \"Consultant who can prototype\" - bridges technical AI and business enablement\n\nAnalyze fit and return JSON only:\n{\n  \"suitability_score\": 0-100,\n  \"location_ok\": true/false,\n  \"strong_fits\": [\"list of matching strengths\"],\n  \"gaps\": [\"potential concerns\"],\n  \"recommendation\": \"apply\" | \"maybe\" | \"skip\",\n  \"reason\": \"1-2 sentence summary\"\n}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a job matching assistant. Analyze job fit strictly. Return only valid JSON, no extra text. Be conservative - if location isn't clearly remote or San Diego, mark location_ok as false. If the role is primarily engineering/coding, score low."
+        }
+      },
+      "id": "analyze-fit",
+      "name": "Analyze Fit (Claude)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [1880, 380]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-3-5-haiku-20241022",
+          "mode": "list"
+        },
+        "options": {}
+      },
+      "id": "claude-model",
+      "name": "Claude Haiku",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [1880, 580],
+      "credentials": {
+        "anthropicApi": {
+          "id": "YOUR_ANTHROPIC_CREDENTIAL",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse analysis results and rank\nconst scored = [];\n\nfor (const item of items) {\n  const job = item.json;\n  let analysis = {};\n  \n  // Parse the analysis output\n  try {\n    const output = job.output || job.text || '{}';\n    analysis = typeof output === 'string' ? JSON.parse(output) : output;\n  } catch (e) {\n    analysis = { suitability_score: 0, recommendation: 'skip', reason: 'Parse error' };\n  }\n  \n  // Skip if location not OK\n  if (analysis.location_ok === false) continue;\n  \n  // Skip if recommendation is skip\n  if (analysis.recommendation === 'skip') continue;\n  \n  scored.push({\n    json: {\n      company: job.company,\n      title: job.title,\n      url: job.url,\n      location: job.location || 'Check posting',\n      score: analysis.suitability_score || 0,\n      recommendation: analysis.recommendation,\n      strong_fits: (analysis.strong_fits || []).join('; '),\n      gaps: (analysis.gaps || []).join('; '),\n      reason: analysis.reason || '',\n      date_found: new Date().toISOString().split('T')[0]\n    }\n  });\n}\n\n// Sort by score descending, take top 5\nscored.sort((a, b) => b.json.score - a.json.score);\nreturn scored.slice(0, 5);"
+      },
+      "id": "rank-jobs",
+      "name": "Rank & Select Top 5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2080, 380]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID_HERE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Daily Picks",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {}
+      },
+      "id": "write-picks",
+      "name": "Write to Daily Picks",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [2280, 380],
+      "notes": "Creates a new 'Daily Picks' tab with recommendations",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 6am Trigger": {
+      "main": [[
+        { "node": "Read Active Applications", "type": "main", "index": 0 },
+        { "node": "Read Rejections", "type": "main", "index": 0 }
+      ]]
+    },
+    "Manual Test Trigger": {
+      "main": [[
+        { "node": "Read Active Applications", "type": "main", "index": 0 },
+        { "node": "Read Rejections", "type": "main", "index": 0 }
+      ]]
+    },
+    "Read Active Applications": {
+      "main": [[
+        { "node": "Build Search Context", "type": "main", "index": 0 }
+      ]]
+    },
+    "Read Rejections": {
+      "main": [[
+        { "node": "Build Search Context", "type": "main", "index": 0 }
+      ]]
+    },
+    "Build Search Context": {
+      "main": [[
+        { "node": "Fan Out Queries", "type": "main", "index": 0 }
+      ]]
+    },
+    "Fan Out Queries": {
+      "main": [[
+        { "node": "SerpAPI Job Search", "type": "main", "index": 0 }
+      ]]
+    },
+    "SerpAPI Job Search": {
+      "main": [[
+        { "node": "Extract & Filter Jobs", "type": "main", "index": 0 }
+      ]]
+    },
+    "Extract & Filter Jobs": {
+      "main": [[
+        { "node": "Verify Link Live", "type": "main", "index": 0 }
+      ]]
+    },
+    "Verify Link Live": {
+      "main": [[
+        { "node": "Keep Live Only", "type": "main", "index": 0 }
+      ]]
+    },
+    "Keep Live Only": {
+      "main": [[
+        { "node": "Analyze Fit (Claude)", "type": "main", "index": 0 }
+      ]]
+    },
+    "Claude Haiku": {
+      "ai_languageModel": [[
+        { "node": "Analyze Fit (Claude)", "type": "ai_languageModel", "index": 0 }
+      ]]
+    },
+    "Analyze Fit (Claude)": {
+      "main": [[
+        { "node": "Rank & Select Top 5", "type": "main", "index": 0 }
+      ]]
+    },
+    "Rank & Select Top 5": {
+      "main": [[
+        { "node": "Write to Daily Picks", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "notes": "Job Sourcing Agent for Matthew Simmons. Runs daily at 6am, reads Google Sheet for exclusions, searches job boards, filters and analyzes fit, writes top 5 picks to Daily Picks tab."
+  }
+}

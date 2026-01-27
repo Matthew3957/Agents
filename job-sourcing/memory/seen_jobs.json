@@ -1,7 +1,136 @@
 {
-  "jobs": [],
+  "jobs": [
+    {
+      "company": "TechSmart",
+      "title": "Strategic AI Customer Success Manager",
+      "salary": "$110-140k",
+      "status": "applied",
+      "date_applied": "2025-12-09",
+      "source": "google_sheet_import",
+      "interview_stage": "Questionnaire",
+      "contact": "Bruce Levin (Recruiting)"
+    },
+    {
+      "company": "People.ai",
+      "title": "Consultant, Customer Success",
+      "status": "applied",
+      "date_applied": "2025-12-26",
+      "source": "google_sheet_import",
+      "contact": "Nolan Houlton"
+    },
+    {
+      "company": "Arize AI",
+      "title": "AI Solutions Manager",
+      "status": "applied",
+      "date_applied": "2025-12-19",
+      "source": "google_sheet_import",
+      "contact": "Gabe Barcelos"
+    },
+    {
+      "company": "HumanSignal",
+      "title": "Customer Success Manager",
+      "status": "applied",
+      "interview_stage": "First Call",
+      "interviewer": "Colby Teller",
+      "interview_date": "2026-02-02",
+      "source": "google_sheet_import",
+      "notes": "Interview scheduled"
+    },
+    {
+      "company": "Glean",
+      "title": "Solutions Engineer",
+      "status": "applied",
+      "notes": "10-30% Travel",
+      "source": "google_sheet_import"
+    },
+    {
+      "company": "Samsara",
+      "title": "Senior Sales Quality Analyst",
+      "salary": "$85,680-$1XX,XXX",
+      "status": "applied",
+      "date_applied": "2026-01-05",
+      "source": "google_sheet_import"
+    },
+    {
+      "company": "Samsara",
+      "title": "Value Architect",
+      "salary": "$139,825-$211,500",
+      "status": "on_hold",
+      "source": "google_sheet_import",
+      "notes": "On hold while waiting for feedback on Senior Sales Quality Analyst application"
+    },
+    {
+      "company": "Jasper",
+      "title": "Digital Customer Success Manager",
+      "salary": "$100-115k",
+      "status": "applied",
+      "date_applied": "2026-01-05",
+      "source": "google_sheet_import"
+    },
+    {
+      "company": "EvenUp",
+      "title": "Customer Success Manager, Midmarket",
+      "salary": "$120-130k",
+      "status": "applied",
+      "source": "google_sheet_import",
+      "notes": "$25k Travel"
+    },
+    {
+      "company": "Anthropic",
+      "title": "Customer Manager, Beneficial Deployment",
+      "salary": "$200-260k",
+      "status": "applied",
+      "date_applied": "2026-01-08",
+      "source": "google_sheet_import"
+    },
+    {
+      "company": "Microsoft",
+      "title": "Language Engineer, Copilot AI",
+      "salary": "$119,800-$234,700",
+      "status": "considering",
+      "source": "google_sheet_import"
+    },
+    {
+      "company": "ClickHouse",
+      "title": "Curriculum Designer - AMER",
+      "salary": "$138,000+",
+      "status": "applied",
+      "date_applied": "2026-01-20",
+      "source": "google_sheet_import"
+    },
+    {
+      "company": "ServiceNow",
+      "title": "Solutions Consultant",
+      "salary": "$82,575-$128,025",
+      "status": "considering",
+      "source": "google_sheet_import"
+    },
+    {
+      "company": "Intuit",
+      "title": "Staff Mailchimp Partner Education Lead",
+      "salary": "$159-212k",
+      "status": "applied",
+      "date_applied": "2026-01-15",
+      "source": "google_sheet_import"
+    },
+    {
+      "company": "Coursera",
+      "title": "Degree Success Manager",
+      "salary": "$108,680-$135,850",
+      "status": "considering",
+      "source": "google_sheet_import"
+    },
+    {
+      "company": "Prolific",
+      "title": "Human Data Operations Partner",
+      "salary": "$130-160k",
+      "status": "applied",
+      "date_applied": "2026-01-22",
+      "source": "google_sheet_import"
+    }
+  ],
   "last_updated": "2026-01-27",
-  "total_surfaced": 0,
-  "total_applied": 0,
-  "notes": "Jobs are deduped by company+title+location hash. Each entry includes date_seen, status (surfaced/applied/passed/expired), and your feedback."
+  "total_surfaced": 16,
+  "total_applied": 12,
+  "notes": "Imported from Google Sheet on 2026-01-27. Jobs deduped by company+title."
 }

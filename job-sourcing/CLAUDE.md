@@ -190,3 +190,76 @@ Matthew can start a session with:
 - "Job update" - quick check for new postings at target companies
 - "Log feedback" - record ratings on previously shown jobs
 - "Update preferences" - modify search criteria or blacklist
+
+---
+
+## n8n Automated Workflow
+
+For fully automated daily job sourcing, use `n8n-workflow-template.json`.
+
+### Setup Instructions
+
+1. **Import the workflow** into n8n
+2. **Configure credentials:**
+   - Google Sheets OAuth2 (for reading applications + writing picks)
+   - SerpAPI (for job searches)
+   - Anthropic API (for fit analysis)
+
+3. **Update Sheet ID:**
+   Replace `YOUR_SHEET_ID_HERE` with your Google Sheet ID
+   (found in the URL: `docs.google.com/spreadsheets/d/SHEET_ID_HERE/edit`)
+
+4. **Create "Daily Picks" tab:**
+   Add a new tab to your Google Sheet called "Daily Picks" with columns:
+   - date_found
+   - company
+   - title
+   - url
+   - location
+   - score
+   - recommendation
+   - strong_fits
+   - gaps
+   - reason
+
+5. **Adjust trigger time:**
+   Default is 6am. Change in "Daily 6am Trigger" node if needed.
+
+### Workflow Flow
+
+```
+Schedule Trigger (6am)
+    ↓
+Read Active Applications + Rejections (Google Sheets)
+    ↓
+Build Search Context (exclusion list + queries)
+    ↓
+Fan Out Queries (parallel searches)
+    ↓
+SerpAPI Search (job boards, last 3 days)
+    ↓
+Extract & Filter Jobs (remove exclusions)
+    ↓
+Verify Links Live (HEAD request)
+    ↓
+Analyze Fit (Claude Haiku)
+    ↓
+Rank & Select Top 5
+    ↓
+Write to Daily Picks tab
+```
+
+### Daily Output
+
+Each morning, check your "Daily Picks" tab for 1-5 new job recommendations with:
+- Suitability score (0-100)
+- Strong fits and gaps
+- Direct apply link
+- Recommendation (apply/maybe/skip)
+
+### Cost Estimate
+
+Per daily run (assuming ~50 jobs analyzed):
+- SerpAPI: ~10 searches × $0.01 = $0.10
+- Claude Haiku: ~15 analyses × $0.001 = $0.015
+- **Total: ~$0.12/day or ~$3.50/month**
